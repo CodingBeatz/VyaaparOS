@@ -1,15 +1,16 @@
 import { useState } from 'react'
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import {
-  ArrowRight, Bell, Boxes, CalendarDays, ChevronDown, CircleHelp, Download, FileText, Gift,
-  LayoutDashboard, Menu, MoreHorizontal, PackagePlus, Search, Settings2, ShoppingCart,
+  ArrowRight, Bell, Boxes, CalendarDays, ChevronDown, CircleHelp, FileText, Gift,
+  LayoutDashboard, Menu, MoreHorizontal, Search, Settings2, ShoppingCart,
   Store, UsersRound, Wallet, X,
 } from 'lucide-react'
-import { formatDate, formatINR } from './lib/format'
-import { demoDataSource } from './lib/data/demoDataSource'
+import { formatDate } from './lib/format'
 import { demoShop } from './lib/data/demo'
 import DashboardPage from './features/dashboard/DashboardPage'
-import { DemoModeBadge, DemoNotice } from './components/ui/DemoStatus'
+import BillingPage from './features/billing/BillingPage'
+import InventoryPage from './features/inventory/InventoryPage'
+import { DemoModeBadge } from './components/ui/DemoStatus'
 
 type IconType = typeof LayoutDashboard
 
@@ -82,7 +83,7 @@ function App() {
         <div className="page-content">
           <Routes>
             <Route path="/" element={<DashboardPage onNewSale={() => navigate('/billing')} />} />
-            <Route path="/billing" element={<PlaceholderPage title="Billing / POS" eyebrow="SELL WITH EASE" icon={ShoppingCart} description="A faster checkout is taking shape. Your shared sale flow will keep bills, stock, loyalty and finance in sync." bullets={['Search and add products to a cart', 'Attach a customer and apply loyalty', 'Complete a sale with a clear invoice']} />} />
+            <Route path="/billing" element={<BillingPage />} />
             <Route path="/inventory" element={<InventoryPage />} />
             <Route path="/customers" element={<PlaceholderPage title="Customers & Loyalty" eyebrow="MAKE EVERY VISIT COUNT" icon={Gift} description="Know your regulars, reward repeat visits and make every customer feel remembered." bullets={['Customer profiles and purchase history', 'Simple points earned on completed sales', 'Shop-wide loyalty activity']} />} />
             <Route path="/store" element={<PlaceholderPage title="Online Store" eyebrow="YOUR SHOP, ONLINE" icon={Store} description="A simple digital storefront for nearby customers, connected to the same products and stock as your counter." bullets={['Shareable storefront catalog', 'Online orders with clear status', 'No payment provider is connected in this demo']} />} />
@@ -94,15 +95,6 @@ function App() {
       </main>
     </div>
   )
-}
-
-function InventoryPage() {
-  const products = demoDataSource.getProducts()
-  return <div className="feature-page"><div className="page-heading"><div><div className="eyebrow">KEEP YOUR SHELVES IN CHECK</div><h1>Inventory</h1><p>A clear view of what’s in stock and what needs a top-up.</p></div><button className="primary-button" disabled title="Product editing is not part of this milestone"><PackagePlus size={16} /> Add product</button></div>
-    <div className="feature-summary"><span className="metric-icon orange"><Boxes size={18} /></span><div><strong>{products.length} sample products</strong><small>{products.filter((product) => product.stockQuantity <= product.lowStockThreshold).length} are at or below their low-stock level</small></div><span className="coming-soon-chip">DEMO CATALOG</span></div>
-    <div className="panel inventory-table-panel"><div className="table-toolbar"><div><h2>Product list</h2><span>Sample inventory for {demoShop.name}</span></div><button className="select-button" disabled title="Export is not part of this milestone"><Download size={14} /> Export</button></div><div className="table-scroll"><table><thead><tr><th>Product</th><th>SKU</th><th>Unit price</th><th>In stock</th><th>Stock status</th></tr></thead><tbody>{products.map((product) => { const low = product.stockQuantity <= product.lowStockThreshold; return <tr key={product.id}><td><div className="table-product"><div className="product-thumb">{product.name.charAt(0)}</div><strong>{product.name}</strong></div></td><td>{product.sku}</td><td>{formatINR(product.salePricePaise)}</td><td>{product.stockQuantity} <span className="muted">{product.unit}</span></td><td><span className={`status-pill ${low ? 'status-low' : 'status-good'}`}><i />{low ? 'Running low' : 'In stock'}</span></td></tr> })}</tbody></table></div></div>
-    <DemoNotice>Sample data only. Product changes are not saved in demo mode.</DemoNotice>
-  </div>
 }
 
 function PlaceholderPage({ title, eyebrow, icon: Icon, description, bullets }: { title: string; eyebrow: string; icon: IconType; description: string; bullets: string[] }) {
