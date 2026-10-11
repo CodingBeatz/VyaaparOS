@@ -1,0 +1,9 @@
+packages:
+  - .
+
+# pnpm 11 project settings belong in this YAML file (not .npmrc).
+nodeLinker: hoisted
+
+# esbuild's install script provides the platform-specific executable Vite needs.
+allowBuilds:
+  esbuild: true
