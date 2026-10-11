@@ -10,6 +10,7 @@ import { demoDataSource } from './lib/data/demoDataSource'
 import { demoShop } from './lib/data/demo'
 import DashboardPage from './features/dashboard/DashboardPage'
 import { DemoModeBadge, DemoNotice } from './components/ui/DemoStatus'
+import FinancePage from './features/finance/FinancePage'
 
 type IconType = typeof LayoutDashboard
 
@@ -86,7 +87,7 @@ function App() {
             <Route path="/inventory" element={<InventoryPage />} />
             <Route path="/customers" element={<PlaceholderPage title="Customers & Loyalty" eyebrow="MAKE EVERY VISIT COUNT" icon={Gift} description="Know your regulars, reward repeat visits and make every customer feel remembered." bullets={['Customer profiles and purchase history', 'Simple points earned on completed sales', 'Shop-wide loyalty activity']} />} />
             <Route path="/store" element={<PlaceholderPage title="Online Store" eyebrow="YOUR SHOP, ONLINE" icon={Store} description="A simple digital storefront for nearby customers, connected to the same products and stock as your counter." bullets={['Shareable storefront catalog', 'Online orders with clear status', 'No payment provider is connected in this demo']} />} />
-            <Route path="/finance" element={<PlaceholderPage title="Finance" eyebrow="MONEY, MADE CLEAR" icon={Wallet} description="See what came in, what went out and what may need your attention." bullets={['Sales and expense summaries', 'Cash-flow estimate from recorded activity', 'Simple export-ready transaction records']} />} />
+            <Route path="/finance" element={<FinancePage />} />
             <Route path="/tax" element={<PlaceholderPage title="Tax Assistant" eyebrow="FEEL READY FOR TAX TIME" icon={FileText} description="Keep sales, purchase and expense records together, with reminders to help you prepare." bullets={['Tax-period sales and purchase summaries', 'Filing preparation reminders', 'Information is indicative and is not tax or filing advice']} />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
