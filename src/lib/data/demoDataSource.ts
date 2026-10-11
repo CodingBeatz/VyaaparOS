@@ -148,7 +148,7 @@ export const demoDataSource = {
   /** Local demo equivalent of the future atomic process_sale RPC; this is not a live transaction. */
   completeSale(input: ProcessSaleInput): ProcessSaleResult {
     if (input.shopId !== SHOP_ID || input.source !== 'pos') throw new DemoDataError('This demo checkout only supports the selected shop and POS sales.')
-    if (!input.idempotencyKey.trim()) throw new DemoDataError('Checkout reference is missing. Please try again.')
+    if (!input.idempotencyKey.trim() || input.idempotencyKey.length > 128) throw new DemoDataError('Checkout reference must be between 1 and 128 characters.')
     const existing = data.sales.find((sale) => sale.idempotencyKey === input.idempotencyKey)
     if (existing) return { saleId: existing.id, invoiceNumber: existing.invoiceNumber, subtotalPaise: existing.subtotalPaise, taxPaise: existing.taxPaise, totalPaise: existing.totalPaise }
     if (!input.items.length) throw new DemoDataError('Add at least one product before checkout.')
@@ -181,8 +181,10 @@ export const demoDataSource = {
     const taxPaise = lines.reduce((sum, line) => sum + line.lineTaxPaise, 0)
     assertPaise(subtotalPaise, 'Subtotal')
     assertPaise(taxPaise, 'Tax')
-    if (discountPaise > subtotalPaise + taxPaise) throw new DemoDataError('Discount cannot exceed the bill total.')
-    const totalPaise = subtotalPaise + taxPaise - discountPaise
+    const grossPaise = subtotalPaise + taxPaise
+    assertPaise(grossPaise, 'Bill total before discount')
+    if (discountPaise > grossPaise) throw new DemoDataError('Discount cannot exceed the bill total.')
+    const totalPaise = grossPaise - discountPaise
     assertPaise(totalPaise, 'Bill total')
 
     const saleId = makeId('sale')
