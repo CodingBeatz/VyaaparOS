@@ -5,6 +5,7 @@ import type {
   ProcessSaleResult, Product, Sale, SaleItem, OnlineListing,
 } from '../../types/domain'
 import { isValidIndianMobile } from '../validation'
+import { getLoyaltyRedemptionPreview } from '../loyaltyRedemption'
 import { normalizeOnlineListings, validateOnlineListing, type OnlineListingDraft } from '../storefront'
 
 const SHOP_ID = 'demo-shop'
@@ -391,7 +392,9 @@ export const demoDataSource = {
     assertPaise(taxPaise, 'Tax')
     const grossPaise = subtotalPaise + taxPaise
     assertPaise(grossPaise, 'Bill total before discount')
-    const loyaltyDiscountPaise = redeemPoints * 10
+    const redemption = getLoyaltyRedemptionPreview(redeemPoints, customer?.loyaltyPoints ?? 0, subtotalPaise - discountPaise, Boolean(customer), true)
+    if (redemption.error) throw new DemoDataError(redemption.error)
+    const loyaltyDiscountPaise = redemption.discountPaise
     assertPaise(loyaltyDiscountPaise, 'Loyalty discount')
     const totalDiscountPaise = discountPaise + loyaltyDiscountPaise
     assertPaise(totalDiscountPaise, 'Total discount')

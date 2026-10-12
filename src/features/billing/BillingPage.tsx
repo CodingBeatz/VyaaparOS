@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, Check, Minus, Plus, Printer, Search, ShoppingBag, Trash2, UserRound, X } from 'lucide-react'
 import { DemoNotice } from '../../components/ui/DemoStatus'
 import { demoDataSource, DemoDataError } from '../../lib/data/demoDataSource'
 import { demoShop } from '../../lib/data/demo'
 import { formatDate, formatINR } from '../../lib/format'
+import { getLoyaltyRedemptionPreview, getMaximumRedeemablePoints } from '../../lib/loyaltyRedemption'
 import type { ProcessSaleInput } from '../../types/domain'
 import '../../features/pos-inventory.css'
 
@@ -34,6 +35,10 @@ export default function BillingPage() {
   const [checkingOut, setCheckingOut] = useState(false)
   const [checkoutKey, setCheckoutKey] = useState(() => crypto.randomUUID())
 
+  useEffect(() => {
+    if (Object.keys(cart).length === 0 && redeemPointsInput) setRedeemPointsInput('')
+  }, [cart, redeemPointsInput])
+
   const categories = useMemo(() => ['All', ...new Set(products.map((product) => categoryFor(product.sku, product.name)))], [products])
   const filteredProducts = products.filter((product) => {
     const matchesQuery = `${product.name} ${product.sku ?? ''}`.toLowerCase().includes(query.toLowerCase().trim())
@@ -50,15 +55,10 @@ export default function BillingPage() {
   const selectedCustomer = customers.find((customer) => customer.id === customerId) ?? null
   const availablePoints = selectedCustomer?.loyaltyPoints ?? 0
   const requestedRedeemPoints = redeemPointsInput.trim() ? Number(redeemPointsInput) : 0
-  const maxRedeemPoints = Math.min(availablePoints, Math.floor(subtotal / 10))
-  let redemptionError = ''
-  if (redeemPointsInput.trim()) {
-    if (!Number.isSafeInteger(requestedRedeemPoints) || requestedRedeemPoints < 0) redemptionError = 'Enter a whole number of loyalty points.'
-    else if (requestedRedeemPoints > availablePoints) redemptionError = `Only ${availablePoints} loyalty points are available.`
-    else if (requestedRedeemPoints * 10 > subtotal) redemptionError = 'The loyalty discount cannot exceed the bill subtotal.'
-    else if (!selectedCustomer && requestedRedeemPoints > 0) redemptionError = 'Select a customer before redeeming points.'
-  }
-  const loyaltyDiscountPaise = redemptionError ? 0 : requestedRedeemPoints * 10
+  const redemption = getLoyaltyRedemptionPreview(requestedRedeemPoints, availablePoints, subtotal, Boolean(selectedCustomer), cartLines.length > 0)
+  const maxRedeemPoints = getMaximumRedeemablePoints(availablePoints, subtotal)
+  const redemptionError = redemption.error
+  const loyaltyDiscountPaise = redemption.discountPaise
   const total = subtotal + tax - loyaltyDiscountPaise
 
   function refreshCatalog() {
@@ -94,7 +94,7 @@ export default function BillingPage() {
   }
 
   function checkout() {
-    if (checkingOut || cartLines.length === 0) return
+    if (checkingOut || cartLines.length === 0 || redemptionError) return
     setCheckingOut(true)
     setError('')
     try {
@@ -143,7 +143,7 @@ export default function BillingPage() {
       </section>
 
       <aside className="pos-cart panel" aria-label="Current bill">
-        <div className="cart-heading"><div><span className="panel-kicker">CURRENT SALE</span><h2>New bill <span className="cart-count">{cartLines.reduce((sum, line) => sum + line.quantity, 0)}</span></h2></div><button className="text-button" onClick={() => { setCart({}); setError('') }} disabled={!cartLines.length}>Clear</button></div>
+        <div className="cart-heading"><div><span className="panel-kicker">CURRENT SALE</span><h2>New bill <span className="cart-count">{cartLines.reduce((sum, line) => sum + line.quantity, 0)}</span></h2></div><button className="text-button" onClick={() => { setCart({}); setRedeemPointsInput(''); setError('') }} disabled={!cartLines.length}>Clear</button></div>
         <label className="customer-select"><UserRound size={16} /><select aria-label="Select customer" value={customerId} onChange={(event) => { setCustomerId(event.target.value); setRedeemPointsInput('') }}><option value="">Walk-in customer</option>{customers.map((customer) => <option value={customer.id} key={customer.id}>{customer.name} · {customer.loyaltyPoints} pts</option>)}</select></label>
         <div className="cart-lines">{cartLines.map(({ product, quantity, subtotal: lineSubtotal }) => <div className="cart-line" key={product.id}><span className="cart-line-icon">{product.name.charAt(0)}</span><div className="cart-line-copy"><strong>{product.name}</strong><small>{formatINR(product.salePricePaise)} / {product.unit}</small><div className="quantity-stepper"><button aria-label={`Decrease ${product.name}`} onClick={() => changeQuantity(product.id, -1)}><Minus size={12} /></button><span>{quantity}</span><button aria-label={`Increase ${product.name}`} onClick={() => changeQuantity(product.id, 1)} disabled={quantity >= (product.salePricePaise > 0 ? Math.min(product.stockQuantity, Math.floor(Number.MAX_SAFE_INTEGER / product.salePricePaise)) : product.stockQuantity)}><Plus size={12} /></button></div></div><div className="cart-line-total"><strong>{formatINR(lineSubtotal)}</strong><button aria-label={`Remove ${product.name}`} onClick={() => changeQuantity(product.id, -quantity)}><Trash2 size={14} /></button></div></div>)}{!cartLines.length && <div className="cart-empty"><span className="empty-bag"><ShoppingBag size={20} /></span><strong>Your bill is empty</strong><small>Choose an item to get started.</small></div>}</div>
         <section className={`loyalty-redemption ${!selectedCustomer ? 'redemption-disabled' : ''}`} aria-label="Loyalty point redemption">
