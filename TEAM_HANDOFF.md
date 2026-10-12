@@ -49,7 +49,7 @@
 
 ## Integration order
 
-1. Developer 1 keeps route placeholders and shared contract stable.
-2. Developers 2 and 3 work within their feature folders against the contract and demo adapter.
+1. Developer 1 keeps the application shell, route entry points and shared contract stable.
+2. Developers 2 and 3 work within their feature folders against the contract and demo adapter; the Customers & Loyalty route is implemented in demo mode.
 3. Agree on schema additions before Developer 1 creates migrations; do not create competing table definitions.
 4. Merge short-lived branches through pull requests, build after each integration, and leave the last hour for end-to-end demo rehearsal.

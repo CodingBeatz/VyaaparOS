@@ -28,13 +28,13 @@ This milestone does **not** connect screens to Supabase, implement sign-in/onboa
 
 ## Demo mode
 
-Dashboard and inventory screens read from `src/lib/data/demoDataSource.ts`, backed by clearly labeled sample data in `src/lib/data/demo.ts`. It is independent from `src/lib/supabase/client.ts`; demo reads never fall through to a live backend, and demo actions are not saved. No payment, tax filing, or AI integration is connected. Tax dates and amounts are preparation examples, not legal or filing advice.
+The dashboard and POS, inventory, and customer screens use `src/lib/data/demoDataSource.ts`, backed by clearly labeled sample data in `src/lib/data/demo.ts`. POS, inventory, and customer changes persist in browser local storage and are shared across those demo screens. This adapter is independent from `src/lib/supabase/client.ts`; demo reads and writes never fall through to a live backend. No payment, tax filing, or AI integration is connected. Tax dates and amounts are preparation examples, not legal or filing advice.
 
 ## Implementation status
 
-- **Implemented:** responsive application shell and seven routes; demo dashboard and read-only demo inventory; shared domain types, formatting and validation helpers; optional browser-safe Supabase client configuration; initial SQL schema migration.
-- **Placeholders:** billing/POS, customers and loyalty, online storefront and orders, finance and cash-flow, and tax assistant pages. Dashboard/inventory data is sample-only; interactive business writes are not implemented.
-- **Incomplete integrations:** Supabase authentication/onboarding and live data adapters; the `process_sale` RPC; payment processing; AI assistance; GST filing or automated tax calculations. The migration has not been applied to a Supabase project or security-tested.
+- **Implemented:** responsive application shell and seven routes; demo dashboard; interactive demo POS, inventory, customer list/profile/history, finance expense/transaction views, online listing management with a private storefront/cart preview, and a tax preparation summary with GST estimate calculator and CSV export; shared domain types, formatting and validation helpers; optional browser-safe Supabase client configuration; initial SQL schema migration.
+- **Placeholders:** online order placement and jurisdictional GST split/filing workflow. Dashboard reminders remain sample preparation reminders. Finance gross profit is not calculated because historical product costs are not snapshotted on sale items. Tax outputs are demo estimates, not official returns or filing advice.
+- **Incomplete integrations:** Supabase authentication/onboarding and live data adapters; the `process_sale` RPC; payment processing; AI assistance; GST liability calculation from jurisdictional data and GST filing. The migration has not been applied to a Supabase project or security-tested.
 
 ## Production build
 
@@ -42,6 +42,8 @@ Dashboard and inventory screens read from `src/lib/data/demoDataSource.ts`, back
 pnpm build
 pnpm preview
 ```
+
+Run the focused finance summary tests with `pnpm test` (Node.js 22.13+).
 
 ## Project structure
 
@@ -92,6 +94,8 @@ The intended RPC accepts `ProcessSaleInput` from `src/types/domain.ts`: shop, op
 - **Developer 1:** app foundation, shared types, Supabase/migrations, billing, inventory, integration.
 - **Developer 2:** `src/features/customers/` and `src/features/storefront/` for customer profiles, loyalty, storefront and online orders.
 - **Developer 3:** `src/features/finance/`, `src/features/tax/` and `src/features/dashboard/` for finance, cash-flow estimates, tax preparation reminders and reporting.
+
+The demo loyalty rules are 100 points for a ₹10 POS checkout discount and 1 point per full ₹100 of the final bill paid after discounts; details and limitations are documented in `src/features/customers/README.md`.
 
 Feature folders already exist with initial handoff notes. Import models from `src/types/domain.ts`; do not redefine them. App shell, shared types, `src/lib/` and migrations are Developer 1-owned interfaces—coordinate changes before editing.
 

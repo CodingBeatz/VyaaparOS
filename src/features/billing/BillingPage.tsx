@@ -28,6 +28,7 @@ export default function BillingPage() {
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('All')
   const [customerId, setCustomerId] = useState('')
+  const [redeemPointsInput, setRedeemPointsInput] = useState('')
   const [receiptId, setReceiptId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [checkingOut, setCheckingOut] = useState(false)
@@ -46,7 +47,19 @@ export default function BillingPage() {
   })
   const subtotal = cartLines.reduce((sum, line) => sum + line.subtotal, 0)
   const tax = cartLines.reduce((sum, line) => sum + line.tax, 0)
-  const total = subtotal + tax
+  const selectedCustomer = customers.find((customer) => customer.id === customerId) ?? null
+  const availablePoints = selectedCustomer?.loyaltyPoints ?? 0
+  const requestedRedeemPoints = redeemPointsInput.trim() ? Number(redeemPointsInput) : 0
+  const maxRedeemPoints = Math.min(availablePoints, Math.floor(subtotal / 10))
+  let redemptionError = ''
+  if (redeemPointsInput.trim()) {
+    if (!Number.isSafeInteger(requestedRedeemPoints) || requestedRedeemPoints < 0) redemptionError = 'Enter a whole number of loyalty points.'
+    else if (requestedRedeemPoints > availablePoints) redemptionError = `Only ${availablePoints} loyalty points are available.`
+    else if (requestedRedeemPoints * 10 > subtotal) redemptionError = 'The loyalty discount cannot exceed the bill subtotal.'
+    else if (!selectedCustomer && requestedRedeemPoints > 0) redemptionError = 'Select a customer before redeeming points.'
+  }
+  const loyaltyDiscountPaise = redemptionError ? 0 : requestedRedeemPoints * 10
+  const total = subtotal + tax - loyaltyDiscountPaise
 
   function refreshCatalog() {
     setProducts(demoDataSource.getProducts())
@@ -88,11 +101,13 @@ export default function BillingPage() {
       const input: ProcessSaleInput = {
         shopId: 'demo-shop', customerId: customerId || null, source: 'pos', idempotencyKey: checkoutKey,
         items: cartLines.map(({ product, quantity }) => ({ productId: product.id, quantity })),
+        redeemPoints: requestedRedeemPoints,
       }
       const result = demoDataSource.completeSale(input)
       refreshCatalog()
       setCart({})
       setCustomerId('')
+      setRedeemPointsInput('')
       setCheckoutKey(crypto.randomUUID())
       setReceiptId(result.saleId)
     } catch (cause) {
@@ -104,6 +119,10 @@ export default function BillingPage() {
   }
 
   const receipt = receiptId ? demoDataSource.getSaleReceipt(receiptId) : null
+  const pointsRedeemed = receipt?.loyaltyTransactions.filter((transaction) => transaction.transactionType === 'redemption').reduce((sum, transaction) => sum - transaction.pointsDelta, 0) ?? 0
+  const pointsEarned = receipt?.loyaltyTransactions.filter((transaction) => transaction.transactionType === 'sale').reduce((sum, transaction) => sum + transaction.pointsDelta, 0) ?? 0
+  const receiptLoyaltyDiscountPaise = pointsRedeemed * 10
+  const otherDiscountPaise = Math.max(0, (receipt?.sale.discountPaise ?? 0) - receiptLoyaltyDiscountPaise)
 
   return <div className="feature-page pos-page">
     <div className="page-heading pos-heading"><div><div className="eyebrow">COUNTER CHECKOUT <span className="eyebrow-dot" /> DEMO REGISTER</div><h1>Billing / POS</h1><p>Build a bill, attach a regular and keep the shelf count in sync.</p></div><div className="register-status"><i /> Register ready</div></div>
@@ -125,15 +144,43 @@ export default function BillingPage() {
 
       <aside className="pos-cart panel" aria-label="Current bill">
         <div className="cart-heading"><div><span className="panel-kicker">CURRENT SALE</span><h2>New bill <span className="cart-count">{cartLines.reduce((sum, line) => sum + line.quantity, 0)}</span></h2></div><button className="text-button" onClick={() => { setCart({}); setError('') }} disabled={!cartLines.length}>Clear</button></div>
-        <label className="customer-select"><UserRound size={16} /><select aria-label="Select customer" value={customerId} onChange={(event) => setCustomerId(event.target.value)}><option value="">Walk-in customer</option>{customers.map((customer) => <option value={customer.id} key={customer.id}>{customer.name} · {customer.loyaltyPoints} pts</option>)}</select></label>
+        <label className="customer-select"><UserRound size={16} /><select aria-label="Select customer" value={customerId} onChange={(event) => { setCustomerId(event.target.value); setRedeemPointsInput('') }}><option value="">Walk-in customer</option>{customers.map((customer) => <option value={customer.id} key={customer.id}>{customer.name} · {customer.loyaltyPoints} pts</option>)}</select></label>
         <div className="cart-lines">{cartLines.map(({ product, quantity, subtotal: lineSubtotal }) => <div className="cart-line" key={product.id}><span className="cart-line-icon">{product.name.charAt(0)}</span><div className="cart-line-copy"><strong>{product.name}</strong><small>{formatINR(product.salePricePaise)} / {product.unit}</small><div className="quantity-stepper"><button aria-label={`Decrease ${product.name}`} onClick={() => changeQuantity(product.id, -1)}><Minus size={12} /></button><span>{quantity}</span><button aria-label={`Increase ${product.name}`} onClick={() => changeQuantity(product.id, 1)} disabled={quantity >= (product.salePricePaise > 0 ? Math.min(product.stockQuantity, Math.floor(Number.MAX_SAFE_INTEGER / product.salePricePaise)) : product.stockQuantity)}><Plus size={12} /></button></div></div><div className="cart-line-total"><strong>{formatINR(lineSubtotal)}</strong><button aria-label={`Remove ${product.name}`} onClick={() => changeQuantity(product.id, -quantity)}><Trash2 size={14} /></button></div></div>)}{!cartLines.length && <div className="cart-empty"><span className="empty-bag"><ShoppingBag size={20} /></span><strong>Your bill is empty</strong><small>Choose an item to get started.</small></div>}</div>
+        <section className={`loyalty-redemption ${!selectedCustomer ? 'redemption-disabled' : ''}`} aria-label="Loyalty point redemption">
+          <div className="redemption-heading"><div><strong>Redeem points</strong><small>100 points = ₹10 off</small></div>{selectedCustomer && <span>{availablePoints.toLocaleString('en-IN')} available</span>}</div>
+          {selectedCustomer ? <div className="redemption-controls"><label htmlFor="redeem-points">Points to use<input id="redeem-points" type="number" min="0" max={maxRedeemPoints} step="1" inputMode="numeric" value={redeemPointsInput} onChange={(event) => setRedeemPointsInput(event.target.value)} placeholder="0" disabled={availablePoints === 0 || maxRedeemPoints === 0} /></label><span className="redemption-max">Up to {maxRedeemPoints.toLocaleString('en-IN')} for this bill</span>{redeemPointsInput && <button type="button" className="redemption-cancel" onClick={() => setRedeemPointsInput('')}>Cancel redemption</button>}</div> : <><div className="redemption-controls"><label htmlFor="redeem-points">Points to use<input id="redeem-points" type="number" value="" placeholder="0" disabled /></label></div><p className="redemption-message">Select a customer to use loyalty points.</p></>}
+          {selectedCustomer && availablePoints === 0 && <p className="redemption-message">This customer has no points available yet.</p>}
+          {redemptionError && <p className="redemption-error" role="alert">{redemptionError}</p>}
+          {selectedCustomer && loyaltyDiscountPaise > 0 && <p className="redemption-preview">Discount preview <strong>−{formatINR(loyaltyDiscountPaise)}</strong></p>}
+        </section>
         {error && <div className="pos-error" role="alert">{error}</div>}
-        <div className="bill-totals"><div><span>Subtotal</span><strong>{formatINR(subtotal)}</strong></div><div><span>Estimated tax</span><strong>{formatINR(tax)}</strong></div><div className="bill-grand-total"><span>Total due</span><strong>{formatINR(total)}</strong></div></div>
-        <button className="checkout-button" disabled={!cartLines.length || checkingOut} onClick={checkout}>{checkingOut ? 'Completing sale…' : <>Complete sale <span>{formatINR(total)} <ArrowLeft className="checkout-arrow" size={15} /></span></>}</button>
+        <div className="bill-totals"><div><span>Subtotal</span><strong>{formatINR(subtotal)}</strong></div><div><span>Estimated tax</span><strong>{formatINR(tax)}</strong></div><div className="bill-loyalty-discount"><span>Loyalty discount</span><strong>{loyaltyDiscountPaise > 0 ? '−' : ''}{formatINR(loyaltyDiscountPaise)}</strong></div><div className="bill-grand-total"><span>Total due</span><strong>{formatINR(total)}</strong></div></div>
+        <button className="checkout-button" disabled={!cartLines.length || checkingOut || Boolean(redemptionError)} onClick={checkout}>{checkingOut ? 'Completing sale…' : <>Complete sale <span>{formatINR(total)} <ArrowLeft className="checkout-arrow" size={15} /></span></>}</button>
         <p className="checkout-caption">Demo checkout · no payment is collected</p>
       </aside>
     </div>
     <DemoNotice>Demo sale only. This browser records the bill and stock movement locally; no live payment or database transaction is connected.</DemoNotice>
-    {receipt && <div className="receipt-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setReceiptId(null) }}><section className="receipt-modal" role="dialog" aria-modal="true" aria-labelledby="receipt-title"><button className="receipt-close" aria-label="Close receipt" onClick={() => setReceiptId(null)}><X size={18} /></button><div className="receipt-success"><span><Check size={21} /></span></div><div className="receipt-title"><span className="panel-kicker">SALE COMPLETE</span><h2 id="receipt-title">Bill is ready</h2><p>Stock has been updated in demo mode.</p></div><div className="receipt-paper"><div className="receipt-shop"><strong>{demoShop.name}</strong><span>{demoShop.location}</span></div><div className="receipt-meta"><span>{receipt.sale.invoiceNumber}</span><span>{formatDate(receipt.sale.createdAt, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</span></div>{receipt.customer && <div className="receipt-customer">Customer <strong>{receipt.customer.name}</strong></div>}{receipt.items.map((item) => <div className="receipt-item" key={item.id}><span>{item.quantity} × {item.productNameSnapshot}</span><strong>{formatINR(item.lineSubtotalPaise)}</strong></div>)}<div className="receipt-item"><span>Subtotal</span><strong>{formatINR(receipt.sale.subtotalPaise)}</strong></div><div className="receipt-item"><span>Estimated tax</span><strong>{formatINR(receipt.sale.taxPaise)}</strong></div>{receipt.sale.discountPaise > 0 && <div className="receipt-item"><span>Discount</span><strong>−{formatINR(receipt.sale.discountPaise)}</strong></div>}<div className="receipt-total"><span>Total due</span><strong>{formatINR(receipt.sale.totalPaise)}</strong></div><div className="receipt-payment-note">Recorded as a demo sale · no payment provider</div></div><div className="receipt-actions"><button className="select-button" onClick={() => window.print()}><Printer size={15} /> Print receipt</button><button className="primary-button" onClick={() => setReceiptId(null)}>New bill</button></div></section></div>}
+    {receipt && <div className="receipt-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setReceiptId(null) }}>
+      <section className="receipt-modal" role="dialog" aria-modal="true" aria-labelledby="receipt-title">
+        <button className="receipt-close" aria-label="Close receipt" onClick={() => setReceiptId(null)}><X size={18} /></button>
+        <div className="receipt-success"><span><Check size={21} /></span></div>
+        <div className="receipt-title"><span className="panel-kicker">SALE COMPLETE</span><h2 id="receipt-title">Bill is ready</h2><p>Stock has been updated in demo mode.</p></div>
+        <div className="receipt-paper">
+          <div className="receipt-shop"><strong>{demoShop.name}</strong><span>{demoShop.location}</span></div>
+          <div className="receipt-meta"><span>{receipt.sale.invoiceNumber}</span><span>{formatDate(receipt.sale.createdAt, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</span></div>
+          {receipt.customer && <div className="receipt-customer">Customer <strong>{receipt.customer.name}</strong></div>}
+          {receipt.items.map((item) => <div className="receipt-item" key={item.id}><span>{item.quantity} × {item.productNameSnapshot}</span><strong>{formatINR(item.lineSubtotalPaise)}</strong></div>)}
+          <div className="receipt-item"><span>Subtotal</span><strong>{formatINR(receipt.sale.subtotalPaise)}</strong></div>
+          <div className="receipt-item"><span>Estimated tax</span><strong>{formatINR(receipt.sale.taxPaise)}</strong></div>
+          <div className="receipt-item receipt-loyalty-row"><span>Loyalty discount</span><strong>{receiptLoyaltyDiscountPaise > 0 ? '−' : ''}{formatINR(receiptLoyaltyDiscountPaise)}</strong></div>
+          {otherDiscountPaise > 0 && <div className="receipt-item"><span>Other discount</span><strong>−{formatINR(otherDiscountPaise)}</strong></div>}
+          {pointsRedeemed > 0 && <div className="receipt-item"><span>Points redeemed</span><strong>−{pointsRedeemed}</strong></div>}
+          {pointsEarned > 0 && <div className="receipt-item"><span>Points earned</span><strong>+{pointsEarned}</strong></div>}
+          <div className="receipt-total"><span>Total due</span><strong>{formatINR(receipt.sale.totalPaise)}</strong></div>
+          <div className="receipt-payment-note">Recorded as a demo sale · no payment provider</div>
+        </div>
+        <div className="receipt-actions"><button className="select-button" onClick={() => window.print()}><Printer size={15} /> Print receipt</button><button className="primary-button" onClick={() => setReceiptId(null)}>New bill</button></div>
+      </section>
+    </div>}
   </div>
 }

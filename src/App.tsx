@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import {
-  ArrowRight, Bell, Boxes, CalendarDays, ChevronDown, CircleHelp, FileText, Gift,
+  ArrowRight, Bell, Boxes, CalendarDays, ChevronDown, CircleHelp, FileText,
   LayoutDashboard, Menu, MoreHorizontal, Search, Settings2, ShoppingCart,
   Store, UsersRound, Wallet, X,
 } from 'lucide-react'
@@ -10,9 +10,11 @@ import { demoShop } from './lib/data/demo'
 import DashboardPage from './features/dashboard/DashboardPage'
 import BillingPage from './features/billing/BillingPage'
 import InventoryPage from './features/inventory/InventoryPage'
+import CustomersPage from './features/customers/CustomersPage'
+import FinancePage from './features/finance/FinancePage'
+import StorePage from './features/storefront/StorePage'
+import TaxPage from './features/tax/TaxPage'
 import { DemoModeBadge } from './components/ui/DemoStatus'
-
-type IconType = typeof LayoutDashboard
 
 const navigation = [
   { label: 'Overview', path: '/', icon: LayoutDashboard },
@@ -85,20 +87,16 @@ function App() {
             <Route path="/" element={<DashboardPage onNewSale={() => navigate('/billing')} />} />
             <Route path="/billing" element={<BillingPage />} />
             <Route path="/inventory" element={<InventoryPage />} />
-            <Route path="/customers" element={<PlaceholderPage title="Customers & Loyalty" eyebrow="MAKE EVERY VISIT COUNT" icon={Gift} description="Know your regulars, reward repeat visits and make every customer feel remembered." bullets={['Customer profiles and purchase history', 'Simple points earned on completed sales', 'Shop-wide loyalty activity']} />} />
-            <Route path="/store" element={<PlaceholderPage title="Online Store" eyebrow="YOUR SHOP, ONLINE" icon={Store} description="A simple digital storefront for nearby customers, connected to the same products and stock as your counter." bullets={['Shareable storefront catalog', 'Online orders with clear status', 'No payment provider is connected in this demo']} />} />
-            <Route path="/finance" element={<PlaceholderPage title="Finance" eyebrow="MONEY, MADE CLEAR" icon={Wallet} description="See what came in, what went out and what may need your attention." bullets={['Sales and expense summaries', 'Cash-flow estimate from recorded activity', 'Simple export-ready transaction records']} />} />
-            <Route path="/tax" element={<PlaceholderPage title="Tax Assistant" eyebrow="FEEL READY FOR TAX TIME" icon={FileText} description="Keep sales, purchase and expense records together, with reminders to help you prepare." bullets={['Tax-period sales and purchase summaries', 'Filing preparation reminders', 'Information is indicative and is not tax or filing advice']} />} />
+            <Route path="/customers" element={<CustomersPage />} />
+            <Route path="/store" element={<StorePage />} />
+            <Route path="/finance" element={<FinancePage />} />
+            <Route path="/tax" element={<TaxPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
       </main>
     </div>
   )
-}
-
-function PlaceholderPage({ title, eyebrow, icon: Icon, description, bullets }: { title: string; eyebrow: string; icon: IconType; description: string; bullets: string[] }) {
-  return <div className="feature-page"><div className="page-heading"><div><div className="eyebrow">{eyebrow}</div><h1>{title}</h1><p>{description}</p></div></div><div className="placeholder-card"><div className="placeholder-icon"><Icon size={22} /></div><div className="placeholder-copy"><span className="coming-soon-chip">FOUNDATION READY</span><h2>A little more is on the way</h2><p>This space is ready for the team to build into. The shared business data contract is in place, so each module can connect without duplicating core models.</p><ul>{bullets.map((bullet) => <li key={bullet}><span>✓</span>{bullet}</li>)}</ul></div><div className="placeholder-ornament"><div className="orbit orbit-one"/><div className="orbit orbit-two"/><div className="orbit-core"><Icon size={26} /></div><span className="orbit-dot dot-one"/><span className="orbit-dot dot-two"/><span className="orbit-dot dot-three"/></div></div><div className="demo-disclaimer"><span className="demo-dot" /> Demo mode is active. No live integrations are connected.</div></div>
 }
 
 export default App
